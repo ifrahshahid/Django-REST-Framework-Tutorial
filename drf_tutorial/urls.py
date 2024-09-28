@@ -1,6 +1,5 @@
 from django.urls import include, path
 from rest_framework import routers
-
 from drf_tutorial.quickstart import views
 
 router = routers.DefaultRouter()
@@ -11,6 +10,10 @@ router.register(r'groups', views.GroupViewSet)
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path('', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('', include('snippets.urls'))
+    # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('', include('snippets.urls')),  # Include this if you have additional routes in snippets
+]
+
+urlpatterns += [
+    path('api-auth/', include('rest_framework.urls')),
 ]
