@@ -30,7 +30,7 @@ class SnippetData:
         instance.url = request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id]))
         instance.highlight = request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id]))
         return instance
-
+    
 @dataclass
 class UserData:
     id: int
@@ -46,6 +46,7 @@ class UserData:
         )
         instance.url = request.build_absolute_uri(reverse('user-detail', args=[user.id]))
         return instance
+
 
 #Create a method to serialize to dict
 def serialize_snippet(snippet_data: SnippetData) -> dict:
