@@ -13,8 +13,8 @@ class SnippetData:
     language: str
     style: str
     owner: str
-    url: str = field(init=False)  # URL for the snippet
-    highlight: str = field(init=False)  # Highlight URL for the snippet
+    url: str = field(init=False)  
+    highlight: str = field(init=False)  
 
     @staticmethod
     def from_model(snippet: Snippet, request) -> 'SnippetData':
@@ -27,7 +27,6 @@ class SnippetData:
             style=snippet.style,
             owner=snippet.owner.username,
         )
-        # Construct URLs using reverse() and request.build_absolute_uri()
         instance.url = request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id]))
         instance.highlight = request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id]))
         return instance
@@ -36,7 +35,7 @@ class SnippetData:
 class UserData:
     id: int
     username: str
-    url: str = field(init=False)  # URL for the user
+    url: str = field(init=False)  
     snippets: list = field(default_factory=list)
 
     @staticmethod
@@ -45,11 +44,10 @@ class UserData:
             id=user.id,
             username=user.username
         )
-        # Construct URL using reverse() and request.build_absolute_uri()
         instance.url = request.build_absolute_uri(reverse('user-detail', args=[user.id]))
         return instance
 
-# Optional: Create a method to serialize to dict
+#Create a method to serialize to dict
 def serialize_snippet(snippet_data: SnippetData) -> dict:
     return asdict(snippet_data)
 
