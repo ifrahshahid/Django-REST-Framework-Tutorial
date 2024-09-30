@@ -12,28 +12,29 @@ from snippets.dataclasses import SnippetData, UserData
 from snippets.permissions import IsOwnerOrReadOnly
 from django.urls import reverse
 
+def build_snippet_response(request, snippet):
+    """Helper function to build snippet response data with absolute URLs."""
+    return SnippetData(
+        url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
+        id=snippet.id,
+        highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
+        owner=snippet.owner.username,
+        title=snippet.title,
+        code=snippet.code,
+        linenos=snippet.linenos,
+        language=snippet.language,
+        style=snippet.style
+    ).to_dict()
+
 @api_view(['GET', 'POST'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly])
 def snippet_list(request):
     """
-    List all snippets, or create a new snippet.
+    List all snippets or create a new snippet.
     """
     if request.method == 'GET':
         snippets = Snippet.objects.all()
-        data = [
-            SnippetData(
-                url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
-                id=snippet.id,
-                highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
-                owner=snippet.owner.username,
-                title=snippet.title,
-                code=snippet.code,
-                linenos=snippet.linenos,
-                language=snippet.language,
-                style=snippet.style
-            ).to_dict()
-            for snippet in snippets
-        ]
+        data = [build_snippet_response(request, snippet) for snippet in snippets]
         return Response(data)
 
     elif request.method == 'POST':
@@ -45,88 +46,29 @@ def snippet_list(request):
             language=request.data.get('language'),
             style=request.data.get('style'),
         )
-        return Response(SnippetData(
-            url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
-            id=snippet.id,
-            highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
-            owner=snippet.owner.username,
-            title=snippet.title,
-            code=snippet.code,
-            linenos=snippet.linenos,
-            language=snippet.language,
-            style=snippet.style
-        ).to_dict(), status=201)
-
+        return Response(build_snippet_response(request, snippet), status=201)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly])
 def snippet_detail(request, pk):
     """
-    Retrieve, update or delete a snippet.
+    Retrieve, update, or delete a snippet.
     """
     snippet = get_object_or_404(Snippet, pk=pk)
 
     if request.method == 'GET':
-        data = SnippetData(
-            url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
-            id=snippet.id,
-            highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
-            owner=snippet.owner.username,
-            title=snippet.title,
-            code=snippet.code,
-            linenos=snippet.linenos,
-            language=snippet.language,
-            style=snippet.style
-        ).to_dict()
-        return Response(data)
+        return Response(build_snippet_response(request, snippet))
 
-    elif request.method == 'PUT':
-        snippet.title = request.data.get('title', snippet.title)
-        snippet.code = request.data.get('code', snippet.code)
-        snippet.linenos = request.data.get('linenos', snippet.linenos)
-        snippet.language = request.data.get('language', snippet.language)
-        snippet.style = request.data.get('style', snippet.style)
+    elif request.method in ['PUT', 'PATCH']:
+        for attr in ['title', 'code', 'linenos', 'language', 'style']:
+            if attr in request.data:
+                setattr(snippet, attr, request.data[attr])
         snippet.save()
-        return Response(SnippetData(
-            url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
-            id=snippet.id,
-            highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
-            owner=snippet.owner.username,
-            title=snippet.title,
-            code=snippet.code,
-            linenos=snippet.linenos,
-            language=snippet.language,
-            style=snippet.style
-        ).to_dict())
-
-    elif request.method == 'PATCH':
-        if 'title' in request.data:
-            snippet.title = request.data['title']
-        if 'code' in request.data:
-            snippet.code = request.data['code']
-        if 'linenos' in request.data:
-            snippet.linenos = request.data['linenos']
-        if 'language' in request.data:
-            snippet.language = request.data['language']
-        if 'style' in request.data:
-            snippet.style = request.data['style']
-        snippet.save()
-        return Response(SnippetData(
-            url=request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])),
-            id=snippet.id,
-            highlight=request.build_absolute_uri(reverse('snippet-highlight', args=[snippet.id])),
-            owner=snippet.owner.username,
-            title=snippet.title,
-            code=snippet.code,
-            linenos=snippet.linenos,
-            language=snippet.language,
-            style=snippet.style
-        ).to_dict())
+        return Response(build_snippet_response(request, snippet))
 
     elif request.method == 'DELETE':
         snippet.delete()
         return Response(status=204)
-
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly])
@@ -136,9 +78,7 @@ def snippet_highlight(request, pk):
     """
     snippet = get_object_or_404(Snippet, pk=pk)
     highlighted_code = snippet.highlighted  
-
     return Response(highlighted_code, content_type='text/html')
-
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly])
@@ -146,21 +86,20 @@ def user_list(request):
     """
     List all users.
     """
-    if request.method == 'GET':
-        users = User.objects.all()
-        data = [
-            UserData(
-                url=request.build_absolute_uri(reverse('user-detail', args=[user.id])),
-                id=user.id,
-                username=user.username,
-                snippets=[
-                    request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])) for snippet in user.snippet_set.all()
-                ]
-            ).to_dict()
-            for user in users
-        ]
-        return Response(data)
-
+    users = User.objects.all()
+    data = [
+        UserData(
+            url=request.build_absolute_uri(reverse('user-detail', args=[user.id])),
+            id=user.id,
+            username=user.username,
+            snippets=[
+                request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])) 
+                for snippet in user.snippet_set.all()
+            ]
+        ).to_dict()
+        for user in users
+    ]
+    return Response(data)
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticatedOrReadOnly])
@@ -169,17 +108,16 @@ def user_detail(request, pk):
     Retrieve a user by ID.
     """
     user = get_object_or_404(User, pk=pk)
-
-    if request.method == 'GET':
-        data = UserData(
-            url=request.build_absolute_uri(reverse('user-detail', args=[user.id])),
-            id=user.id,
-            username=user.username,
-            snippets=[
-                request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])) for snippet in user.snippet_set.all()
-            ]
-        ).to_dict()
-        return Response(data)
+    data = UserData(
+        url=request.build_absolute_uri(reverse('user-detail', args=[user.id])),
+        id=user.id,
+        username=user.username,
+        snippets=[
+            request.build_absolute_uri(reverse('snippet-detail', args=[snippet.id])) 
+            for snippet in user.snippet_set.all()
+        ]
+    ).to_dict()
+    return Response(data)
 
 
 # -------------------Using serializers.py-------------------------------
